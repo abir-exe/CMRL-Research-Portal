@@ -164,7 +164,8 @@ These can be introduced later only if actual scale requires them.
 | TypeScript | Type safety |
 | React Router | Routing |
 | Tailwind CSS | Styling |
-| Zustand | Global client state |
+| TanStack Query | Server state management, caching, data fetching, mutations |
+| React Context | Client-only global state (auth context, theme) |
 | Axios | HTTP requests |
 | React Hook Form | Forms |
 | Zod | Client-side validation |
@@ -212,22 +213,18 @@ Supported:
 
 Use dedicated object/file storage rather than MongoDB for large files.
 
-Initial options:
+**Chosen Provider: Firebase Storage**
 
-- Firebase Storage
-- AWS S3
-- Cloudflare R2
-- Supabase Storage
+Firebase Storage is the selected file storage provider because:
 
-The final choice should be made based on:
+- Firebase Authentication is already part of the stack.
+- Firebase Storage integrates naturally within the Firebase project.
+- Firebase Security Rules can be applied at the storage level.
+- Reduces the number of external service dependencies for MVP.
 
-- Cost
-- Storage limits
-- Download requirements
-- Deployment environment
-- Access-control requirements
+MongoDB stores **file metadata and storage references only**. Binary file content is stored in Firebase Storage.
 
-For a student project, Firebase Storage is a reasonable initial choice because Firebase Authentication is already being used.
+Future migration to AWS S3 or Cloudflare R2 is possible by replacing the storage service layer without changing the API contract.
 
 ---
 
@@ -671,12 +668,15 @@ The middleware should:
 
 1. Extract token.
 2. Verify token through Firebase Admin SDK.
-3. Extract Firebase UID.
-4. Find application user.
-5. Attach authenticated user context to request.
-6. Continue.
+3. Extract Firebase UID and custom claims (role) from the verified token.
+4. Find the corresponding MongoDB user document by Firebase UID.
+5. Verify that `accountStatus` is `ACTIVE`. Return `403 Forbidden` if `PENDING` or `SUSPENDED`.
+6. Attach the full authenticated user context (MongoDB user document + role) to the request.
+7. Continue.
 
-If verification fails:
+MongoDB is the authoritative source for role and account status. Custom claims provide an efficiency reference but the role from the MongoDB user document governs all authorization decisions.
+
+If token verification fails:
 
 ```text
 401 Unauthorized
@@ -714,25 +714,32 @@ The initial implementation can use role-based permissions, while a more granular
 
 # 19. Role Model
 
-Initial roles:
+MVP roles:
 
 ```text
 STUDENT
 SUPERVISOR
 ADMIN
-ALUMNI
 ```
 
-Potential future:
+Potential future roles (not in MVP):
 
 ```text
+ALUMNI
 COLLABORATOR
 GUEST_RESEARCHER
 ```
 
-Roles should be stored in MongoDB.
+Roles are stored in MongoDB as the **source of truth**.
 
-Firebase custom claims may optionally be used for selected authorization optimizations, but MongoDB remains the source of application role information.
+**Firebase Custom Claims**: Firebase custom claims will be used to carry the user's high-level role (`STUDENT`, `SUPERVISOR`, `ADMIN`). This allows authorization checks to reference the verified token without an additional database lookup in performance-critical paths.
+
+Important constraints:
+
+- MongoDB is the canonical source of role data. Custom claims are a synchronized cache.
+- When a user's role is changed in MongoDB (e.g., by an Admin), the backend must immediately update the user's Firebase custom claims via the Firebase Admin SDK.
+- Student rank is **not** stored in custom claims. Rank is application data in MongoDB only and must never be used as an authorization mechanism.
+- If custom claims and MongoDB role are ever out of sync, MongoDB takes precedence.
 
 ---
 

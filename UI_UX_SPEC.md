@@ -97,21 +97,35 @@ Avoid using too many saturated colors.
 
 Certain colors should have functional meaning.
 
-### Research Status
+### Material Status Colors
 
 ```text
-Green → Studied / Completed / Available
+Green  → AVAILABLE / COMPLETED / VERIFIED
 
-Blue → In Progress
+Blue   → RESERVED / STUDYING / IN_PROGRESS
 
-Yellow → Under Review / Pending
+Yellow → PROPOSED / UNDER_REVIEW / PLANNED
 
-Red → Failed / Blacklisted / Unstable
+Red    → FAILED / BLACKLISTED / STRUCTURALLY_UNSTABLE / REJECTED
 
-Gray → Archived / Inactive
+Gray   → ARCHIVED / NOT_STUDIED
+
+Purple → PUBLISHED
 ```
 
-These colors should be supplemented with text/icons so color is never the only indicator.
+### Account Status Colors
+
+```text
+Green  → ACTIVE
+
+Yellow → PENDING
+
+Red    → SUSPENDED
+
+Gray   → INACTIVE
+```
+
+These colors must always be supplemented with text labels or icons. Color alone must never be the sole indicator of status. This is required for accessibility.
 
 ---
 

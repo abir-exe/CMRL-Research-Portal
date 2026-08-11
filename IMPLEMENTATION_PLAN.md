@@ -559,6 +559,8 @@ Required:
 [ ] Password reset
 [ ] Logout
 [ ] Auth state listener
+[ ] Firebase custom claims: set role claim on user sync and on role change
+[ ] Custom claims role values: STUDENT, SUPERVISOR, ADMIN
 ```
 
 ---
@@ -582,16 +584,22 @@ Flow:
 ```text
 Firebase token
       ↓
-Firebase Admin
+Firebase Admin SDK (verify token)
       ↓
-Verify token
+Extract UID + custom claims (role)
       ↓
-Extract UID
+Find MongoDB user by Firebase UID
       ↓
-Find MongoDB user
+Check accountStatus (must be ACTIVE)
       ↓
-Attach user to request
+Attach user context to request
+      ↓
+Continue
 ```
+
+If `accountStatus` is `PENDING` or `SUSPENDED`, return `403 Forbidden`.
+
+When a user's role changes in MongoDB, the backend must call the Firebase Admin SDK to update the user's custom claims accordingly. MongoDB is the source of truth for role data.
 
 ---
 
@@ -607,15 +615,27 @@ POST /auth/sync
 MongoDB User
 ```
 
-If new:
+If new user:
 
 ```text
 role = STUDENT
 rank = NEWBIE
-status = ACTIVE/PENDING
+accountStatus = PENDING
 ```
 
-The exact account approval workflow should be configurable.
+New accounts always start as `PENDING`. A Supervisor or Admin must approve the account before it becomes `ACTIVE`. A `PENDING` user can authenticate but cannot access protected research functionality.
+
+After MongoDB user creation, set Firebase custom claims:
+
+```text
+{ role: "STUDENT" }
+```
+
+After activation by a Supervisor or Admin:
+
+```text
+accountStatus = ACTIVE
+```
 
 ---
 
@@ -759,7 +779,7 @@ Review     Material
 
 Implement standardized status values.
 
-Recommended:
+Canonical enum:
 
 ```text
 PROPOSED
@@ -769,11 +789,16 @@ RESERVED
 STUDYING
 COMPLETED
 PUBLISHED
+REJECTED
+STRUCTURALLY_UNSTABLE
 BLACKLISTED
 ARCHIVED
 ```
 
 Do not allow arbitrary status strings.
+
+- `REJECTED`: A proposed material was rejected during Supervisor or Admin review.
+- `STRUCTURALLY_UNSTABLE`: Calculation revealed structural instability. The material record and research history are preserved for future reference.
 
 ---
 
@@ -879,6 +904,7 @@ PLANNED
 IN_PROGRESS
 COMPLETED
 VERIFIED
+PUBLISHED
 FAILED
 ```
 
@@ -889,6 +915,10 @@ studied = true/false
 ```
 
 because research is a process.
+
+- `VERIFIED`: The property value has been reviewed and confirmed by the Supervisor.
+- `PUBLISHED`: The property result has been included in a published paper.
+- `VERIFIED` and `PUBLISHED` are distinct states. A completed property is not automatically verified, and a verified property is not automatically published.
 
 ---
 
@@ -1056,19 +1086,19 @@ Recent Activity
 
 # 43. Phase 10 — Research Files
 
-Choose storage architecture.
-
-Recommended:
+Storage architecture:
 
 ```text
 MongoDB
-→ metadata
+→ file metadata, storage references, access control, versioning
 
-Object Storage
-→ actual files
+Firebase Storage
+→ actual file content (binary)
 ```
 
-Do not store large research files directly inside MongoDB documents.
+Firebase Storage is the chosen file storage provider. Do not store large research files directly inside MongoDB documents.
+
+The backend must generate short-lived signed URLs for accessing non-public files. Direct public Firebase Storage URLs must not be exposed for restricted research files.
 
 ---
 
@@ -1480,7 +1510,7 @@ Admin functionality:
 
 # 65. Role System
 
-Implement:
+MVP roles:
 
 ```text
 STUDENT
@@ -1488,9 +1518,11 @@ SUPERVISOR
 ADMIN
 ```
 
-Do not create too many roles initially.
+Do not create too many roles initially. The `ALUMNI` role is deferred to post-MVP.
 
 Permissions should be granular enough that a supervisor does not automatically gain every administrative capability.
+
+Firebase custom claims must carry the user's current role. When a role is changed in MongoDB, the backend must update the Firebase custom claims via the Admin SDK. This ensures that the role reflected in issued tokens stays synchronized with MongoDB.
 
 ---
 

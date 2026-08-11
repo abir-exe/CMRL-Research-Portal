@@ -244,21 +244,23 @@ Conceptual structure:
 
 # 6. User Roles
 
-Enum:
+MVP Enum:
 
 ```text id="5w7kgq"
 STUDENT
 SUPERVISOR
 ADMIN
-ALUMNI
 ```
 
-Future:
+Potential future roles (not in MVP):
 
 ```text id="6gnx5w"
+ALUMNI
 COLLABORATOR
 GUEST_RESEARCHER
 ```
+
+Note: There is no `ALUMNI` authorization role in the MVP. Former CMRL researchers are represented through their existing user records. Account status or a dedicated alumni profile data structure may be used to indicate alumni standing without granting a distinct authorization role.
 
 ---
 
@@ -530,7 +532,9 @@ SUPERVISOR_ONLY
 ADMIN_ONLY
 ```
 
-This allows sensitive research to remain private.
+**Default: `CMRL_MEMBERS`**
+
+Newly created materials default to `CMRL_MEMBERS` visibility. Material records are not publicly visible unless a Supervisor or Admin explicitly sets visibility to `PUBLIC`. Only intentionally shared research information should appear on public-facing pages. This default protects unpublished research from inadvertent public exposure.
 
 ---
 

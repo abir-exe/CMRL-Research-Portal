@@ -215,7 +215,7 @@ The administrator has full system management privileges.
 
 Former CMRL researchers.
 
-Alumni may have limited authenticated access or public profiles depending on future implementation.
+Alumni do not have a separate authorization role in the MVP. Former CMRL researchers retain their existing user accounts and may be designated as alumni through account status or a dedicated public alumni profile record. A distinct `ALUMNI` role may be introduced post-MVP if specific access requirements emerge.
 
 ---
 
@@ -278,6 +278,7 @@ Firebase should manage:
 - Password authentication
 - Google authentication
 - Email verification
+- Custom claims (high-level role: `STUDENT`, `SUPERVISOR`, `ADMIN`)
 
 MongoDB should manage:
 
@@ -285,16 +286,21 @@ MongoDB should manage:
 - Research interests
 - Academic information
 - Projects
-- Roles
+- Roles (source of truth)
 - Rank
+- Account status
 - Publications
 - Forum activity
 - Collaboration activity
 - Other application-specific information
 
+Firebase custom claims carry the user's role for efficient authorization checks. MongoDB is the authoritative source of role data. When a role changes in MongoDB, the Firebase Admin SDK must update the user's custom claims to keep them synchronized.
+
+Student rank is stored in MongoDB only. It is not a custom claim and must never be used as an authorization mechanism.
+
 The frontend must never be trusted to determine authorization.
 
-Backend authorization must verify the authenticated Firebase identity and associated role.
+Backend authorization must verify the authenticated Firebase identity, custom claims, and the role and account status recorded in MongoDB.
 
 ---
 
@@ -605,16 +611,17 @@ Recommended statuses:
 
 | Status | Meaning |
 |---|---|
-| Proposed | Suggested for research |
-| Under Review | Being evaluated |
-| Available | Available for a researcher |
-| Reserved | Claimed by a researcher |
+| Proposed | Suggested for research by a student; awaiting review |
+| Under Review | Being evaluated by Supervisor or Admin |
+| Available | Approved and available for reservation |
+| Reserved | Claimed by a researcher; pending research start |
 | Studying | Research currently underway |
 | Completed | Research completed |
-| Published | Research resulted in publication |
-| Rejected | Research proposal rejected |
-| Structurally Unstable | Calculation indicates instability |
-| Blacklisted | Archived as unsuitable for future research |
+| Published | Research resulted in a publication |
+| Rejected | Proposed material was rejected during review |
+| Structurally Unstable | Calculation revealed structural instability; record preserved |
+| Blacklisted | Archived as unsuitable; cannot be reserved |
+| Archived | Removed from active database; historical record preserved |
 
 Status transitions should be controlled according to user role.
 

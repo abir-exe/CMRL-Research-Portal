@@ -411,20 +411,27 @@ Required.
 
 ### Purpose
 
-Used after first successful Firebase authentication.
+Called immediately after the first successful Firebase authentication to create or retrieve the MongoDB user document.
 
 ### Behavior
 
-If the user does not exist:
+If the user does not exist in MongoDB:
 
-1. Verify Firebase identity.
-2. Create a MongoDB user.
-3. Assign initial role/status.
-4. Return profile.
+1. Verify Firebase identity via Firebase Admin SDK.
+2. Create a MongoDB user document with:
+   - `role = STUDENT`
+   - `rank = NEWBIE`
+   - `accountStatus = PENDING`
+3. Set Firebase custom claims: `{ role: "STUDENT" }`.
+4. Return the new user profile.
 
 If user already exists:
 
-- Return existing profile.
+- Return the existing profile.
+
+### Important
+
+New users with `PENDING` status cannot access protected research functionality. A Supervisor or Admin must set `accountStatus = ACTIVE` before the user can use the research platform.
 
 ---
 
@@ -690,11 +697,16 @@ Private information must be filtered according to authorization.
 
 # 34. POST `/materials`
 
-Creates a material.
+Creates a material record.
 
-### Role
+### Authentication
 
-Student with appropriate permission, Supervisor, or Admin.
+Required. The authenticated user must have `accountStatus = ACTIVE`.
+
+### Behavior by role
+
+- **Student**: Material is created with `status = PROPOSED`. The material enters `UNDER_REVIEW` workflow. A Supervisor or Admin must approve it before it becomes `AVAILABLE`.
+- **Supervisor or Admin**: May create a material directly as `AVAILABLE`, or as `PROPOSED` if the review workflow is desired.
 
 ### Request
 
@@ -711,12 +723,15 @@ Student with appropriate permission, Supervisor, or Admin.
 
 ### Backend behavior
 
-1. Validate request.
-2. Normalize formula.
-3. Search for potential duplicates.
-4. Create material.
-5. Create audit log.
-6. Return material.
+1. Verify `accountStatus = ACTIVE`.
+2. Validate request.
+3. Normalize formula.
+4. Search for potential duplicates.
+5. Set initial `status` based on user role (`PROPOSED` for students, `AVAILABLE` for supervisors/admins unless overridden).
+6. Set default `visibility = CMRL_MEMBERS`.
+7. Create material.
+8. Create audit log entry.
+9. Return material.
 
 ---
 
@@ -974,11 +989,21 @@ Returns reservation details.
 
 # 51. PATCH `/material-reservations/:reservationId/approve`
 
-Approves a reservation.
+Approves a reservation request.
 
 ### Role
 
-Supervisor/Admin.
+- **Supervisor**: Primary approver for material reservations.
+- **Admin**: Administrative override — may approve or reject any reservation.
+
+### Backend must:
+
+1. Verify the user is SUPERVISOR or ADMIN.
+2. Verify the reservation exists and is in `REQUESTED` status.
+3. Verify no other active reservation exists for the same material.
+4. Approve the reservation.
+5. Update material status to `RESERVED`.
+6. Notify the requesting student.
 
 ---
 
