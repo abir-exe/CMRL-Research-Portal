@@ -16,7 +16,7 @@ export async function connectDB(): Promise<void> {
   }
 
   try {
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
     logger.info('Successfully connected to MongoDB database.');
   } catch (error) {
     logger.error({ err: error }, 'Failed to connect to MongoDB database.');
