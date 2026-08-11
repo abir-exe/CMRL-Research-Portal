@@ -3,6 +3,7 @@ packages:
   - "packages/*"
 allowBuilds:
   '@firebase/util': true
+  esbuild: set this to true or false
   protobufjs: true
 onlyBuiltDependencies:
   - "@firebase/util"

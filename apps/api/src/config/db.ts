@@ -4,6 +4,10 @@ import pino from 'pino';
 const logger = pino({ name: 'db' });
 
 export async function connectDB(): Promise<void> {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+
   const mongoUri = process.env.MONGODB_URI;
 
   if (!mongoUri) {
