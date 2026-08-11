@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-// Import compiled JavaScript modules from apps/api/dist to prevent uncompiled TypeScript module resolution errors in Vercel Node runtime
-import { app } from '../apps/api/dist/app';
-import { connectDB } from '../apps/api/dist/config/db';
-import { seedSupervisorProfile } from '../apps/api/dist/scripts/seedSupervisor';
+import { app } from '../apps/api/src/app';
+import { connectDB } from '../apps/api/src/config/db';
+import { seedSupervisorProfile } from '../apps/api/src/scripts/seedSupervisor';
 
 export default async function handler(req: Request, res: Response) {
   try {
