@@ -7,14 +7,20 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Atom, LogIn } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/lib/errorHandler';
+import { GoogleRegistrationModal } from '@/components/auth/GoogleRegistrationModal';
+import { Atom, LogIn, Eye, EyeOff } from 'lucide-react';
 
 export function LoginPage() {
   const { login, loginWithGoogle, error: authError } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
   const navigate = useNavigate();
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -23,13 +29,12 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/profile');
+      showSuccess('Successfully signed in to CMRL Research Portal.');
+      navigate('/dashboard');
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message);
-      } else {
-        setErrorMsg('Failed to sign in.');
-      }
+      const friendlyMsg = getFriendlyErrorMessage(err, 'Failed to sign in. Please verify your credentials.');
+      setErrorMsg(friendlyMsg);
+      showError(friendlyMsg);
     } finally {
       setLoading(false);
     }
@@ -39,14 +44,17 @@ export function LoginPage() {
     setErrorMsg(null);
     setLoading(true);
     try {
-      await loginWithGoogle();
-      navigate('/profile');
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message);
+      const result = await loginWithGoogle();
+      if (result.isNewUser) {
+        setShowGoogleModal(true);
       } else {
-        setErrorMsg('Google sign-in failed.');
+        showSuccess('Google sign-in successful.');
+        navigate('/dashboard');
       }
+    } catch (err: unknown) {
+      const friendlyMsg = getFriendlyErrorMessage(err, 'Google sign-in failed.');
+      setErrorMsg(friendlyMsg);
+      showError(friendlyMsg);
     } finally {
       setLoading(false);
     }
@@ -82,13 +90,23 @@ export function LoginPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                <Input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
@@ -117,6 +135,16 @@ export function LoginPage() {
           </CardFooter>
         </Card>
       </PageContainer>
+
+      {/* Google First-Time Registration Modal */}
+      <GoogleRegistrationModal
+        isOpen={showGoogleModal}
+        onClose={() => setShowGoogleModal(false)}
+        onSuccess={() => {
+          setShowGoogleModal(false);
+          navigate('/dashboard');
+        }}
+      />
     </Section>
   );
 }

@@ -5,6 +5,8 @@ import pinoHttp from "pino-http";
 import { healthRoutes } from "./routes/health.routes";
 import { authRouter } from "./routes/auth.routes";
 import { userRouter } from "./routes/user.routes";
+import { adminRouter } from "./routes/admin.routes";
+import { notificationRouter } from "./routes/notification.routes";
 
 const app = express();
 
@@ -18,6 +20,8 @@ app.use(pinoHttp());
 app.use("/api/v1", healthRoutes);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/notifications", notificationRouter);
 
 // 404 handler
 app.use((req, res) => {

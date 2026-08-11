@@ -1,15 +1,29 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Atom, Moon, Sun } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, Atom, Moon, Sun, LogOut } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { Button } from '@/components/ui/Button';
+import { NotificationDropdown } from '@/components/layout/NotificationDropdown';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { firebaseUser, mongoUser } = useAuth();
+  const { firebaseUser, mongoUser, logout } = useAuth();
+  const { showSuccess } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      showSuccess('Signed out of CMRL Portal.');
+      navigate('/login');
+    } catch {
+      // Handled in AuthContext
+    }
+  };
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -20,6 +34,16 @@ export function Header() {
     { name: 'Achievements', path: '/achievements' },
     { name: 'Contact', path: '/contact' },
   ];
+
+  if (mongoUser) {
+    if (mongoUser.role === 'STUDENT') {
+      navLinks.unshift({ name: 'Dashboard', path: '/dashboard' });
+    } else if (mongoUser.role === 'SUPERVISOR') {
+      navLinks.unshift({ name: 'Supervisor Dashboard', path: '/supervisor' });
+    } else if (mongoUser.role === 'ADMIN') {
+      navLinks.unshift({ name: 'Admin Dashboard', path: '/admin' });
+    }
+  }
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -65,15 +89,26 @@ export function Header() {
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             {firebaseUser ? (
-              <Button variant="default" size="sm">
-                <Link to="/profile">
-                  {mongoUser?.profile?.fullName || mongoUser?.userId || 'My Profile'}
-                </Link>
-              </Button>
+              <div className="flex items-center space-x-2">
+                <NotificationDropdown />
+                <Button variant="default" size="sm">
+                  <Link to="/profile">
+                    {mongoUser?.profile?.fullName || mongoUser?.userId || 'My Profile'}
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  <LogOut size={16} className="mr-1" /> Sign Out
+                </Button>
+              </div>
             ) : (
-              <Button variant="outline" size="sm">
-                <Link to="/login">Portal Login</Link>
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm">
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button variant="default" size="sm">
+                  <Link to="/register">Register</Link>
+                </Button>
+              </div>
             )}
           </div>
 

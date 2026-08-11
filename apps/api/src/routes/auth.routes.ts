@@ -1,7 +1,9 @@
 import { Router, Response } from 'express';
 import { verifyFirebaseToken, setFirebaseCustomRoleClaim } from '../config/firebaseAdmin';
 import { User } from '../models/User';
+import { notifyUsersByRole } from '../models/Notification';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { normalizeBDMobile, validateUniversityRoll } from '@cmrl/shared';
 
 export const authRouter = Router();
 
@@ -29,9 +31,49 @@ authRouter.post('/sync', async (req: AuthenticatedRequest, res: Response): Promi
     }
 
     const { uid, email, name, picture } = decodedToken;
+    const reqProfile = req.body?.profile || {};
+
+    // 1. Strict lookup by firebaseUid first
     let user = await User.findOne({ firebaseUid: uid });
 
+    // 2. If not found by firebaseUid, check for an UNLINKED pre-provisioned account by email
+    if (!user && email) {
+      const preProvisionedUser = await User.findOne({ 'profile.email': email });
+      if (preProvisionedUser && preProvisionedUser.firebaseUid.startsWith('PROVISIONED_')) {
+        // Legitimate first authentication for pre-provisioned account -> link firebaseUid
+        preProvisionedUser.firebaseUid = uid;
+        if (picture && !preProvisionedUser.profile.googlePhotoUrl) {
+          preProvisionedUser.profile.googlePhotoUrl = picture;
+        }
+        await preProvisionedUser.save();
+        await setFirebaseCustomRoleClaim(uid, preProvisionedUser.role);
+        user = preProvisionedUser;
+      }
+    }
+
     if (!user) {
+      // Validate registration fields if provided
+      if (reqProfile.universityRoll && !validateUniversityRoll(reqProfile.universityRoll)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_ROLL', message: 'University Roll must contain digits only.' },
+        });
+        return;
+      }
+
+      let normalizedMobile = '';
+      if (reqProfile.mobile) {
+        const validMobile = normalizeBDMobile(reqProfile.mobile);
+        if (!validMobile) {
+          res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_MOBILE', message: 'Please enter a valid Bangladeshi mobile number (+8801XXXXXXXXX).' },
+          });
+          return;
+        }
+        normalizedMobile = validMobile;
+      }
+
       // New registration -> create MongoDB document with PENDING accountStatus
       const generatedUserId = `CMRL-USER-${Math.floor(100000 + Math.random() * 900000)}`;
 
@@ -43,8 +85,14 @@ authRouter.post('/sync', async (req: AuthenticatedRequest, res: Response): Promi
         rank: 'NEWBIE',
         profile: {
           email: email || '',
-          fullName: name || '',
+          fullName: reqProfile.fullName || name || '',
           photoUrl: picture || '',
+          googlePhotoUrl: picture || '',
+          university: reqProfile.university || 'Pabna University of Science and Technology',
+          department: reqProfile.department || 'Department of Physics',
+          universityRoll: reqProfile.universityRoll ? reqProfile.universityRoll.trim() : '',
+          gender: reqProfile.gender || '',
+          mobile: normalizedMobile,
         },
       });
 
@@ -56,6 +104,14 @@ authRouter.post('/sync', async (req: AuthenticatedRequest, res: Response): Promi
           throw new Error('FAILED_CUSTOM_CLAIM');
         }
         user = newUser;
+
+        // Notify SUPERVISOR and ADMIN roles about new pending registration
+        await notifyUsersByRole(['SUPERVISOR', 'ADMIN'], {
+          type: 'NEW_REGISTRATION',
+          title: 'New Registration Pending',
+          message: `A new student registration (${newUser.profile.email}) is waiting for approval.`,
+          linkForRole: (role) => (role === 'ADMIN' ? '/admin' : '/supervisor'),
+        });
       } catch {
         // Sync failure safety: Rollback newly created MongoDB user if saved
         if (newUser && newUser._id) {

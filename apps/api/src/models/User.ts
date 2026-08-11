@@ -1,21 +1,27 @@
 import { Schema, model, Document } from 'mongoose';
 
 export type UserRole = 'STUDENT' | 'SUPERVISOR' | 'ADMIN';
-export type AccountStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
-export type StudentRank = 'NEWBIE' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'LEGEND';
+export type AccountStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | 'REJECTED';
+export type StudentRank = 'NEWBIE' | 'MEMBER' | 'SENIOR_MEMBER' | 'CREATOR' | 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'LEGEND';
 
 export interface IUserProfile {
   firstName?: string;
   lastName?: string;
   fullName?: string;
   photoUrl?: string;
+  googlePhotoUrl?: string;
   dateOfBirth?: Date;
   gender?: string;
   university?: string;
   department?: string;
+  universityRoll?: string;
   batch?: string;
   email: string;
   mobile?: string;
+  designation?: string;
+  administrativePositions?: string[];
+  education?: { degree: string; institution: string }[];
+  personalEmail?: string;
 }
 
 export interface IResearchProfile {
@@ -24,6 +30,7 @@ export interface IResearchProfile {
   skills?: string[];
   software?: string[];
   programmingLanguages?: string[];
+  currentResearchProject?: string;
 }
 
 export interface IExternalProfiles {
@@ -32,6 +39,8 @@ export interface IExternalProfiles {
   orcid?: string;
   researchGate?: string;
   googleScholar?: string;
+  facebook?: string;
+  pustFacultyProfile?: string;
 }
 
 export interface IPrivacySettings {
@@ -47,6 +56,7 @@ export interface IUser extends Document {
   role: UserRole;
   accountStatus: AccountStatus;
   rank: StudentRank;
+  assignedSupervisorUserId?: string;
   profile: IUserProfile;
   researchProfile?: IResearchProfile;
   externalProfiles?: IExternalProfiles;
@@ -76,28 +86,43 @@ const UserSchema = new Schema<IUser>(
     },
     accountStatus: {
       type: String,
-      enum: ['PENDING', 'ACTIVE', 'SUSPENDED', 'INACTIVE'],
+      enum: ['PENDING', 'ACTIVE', 'SUSPENDED', 'INACTIVE', 'REJECTED'],
       default: 'PENDING',
       required: true,
     },
     rank: {
       type: String,
-      enum: ['NEWBIE', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT', 'LEGEND'],
+      enum: ['NEWBIE', 'MEMBER', 'SENIOR_MEMBER', 'CREATOR', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT', 'LEGEND'],
       default: 'NEWBIE',
       required: true,
+    },
+    assignedSupervisorUserId: {
+      type: String,
+      default: '',
     },
     profile: {
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
       fullName: { type: String, default: '' },
       photoUrl: { type: String, default: '' },
+      googlePhotoUrl: { type: String, default: '' },
       dateOfBirth: { type: Date },
       gender: { type: String, default: '' },
       university: { type: String, default: '' },
       department: { type: String, default: '' },
+      universityRoll: { type: String, default: '' },
       batch: { type: String, default: '' },
       email: { type: String, required: true },
       mobile: { type: String, default: '' },
+      designation: { type: String, default: '' },
+      administrativePositions: { type: [String], default: [] },
+      education: [
+        {
+          degree: { type: String },
+          institution: { type: String },
+        },
+      ],
+      personalEmail: { type: String, default: '' },
     },
     researchProfile: {
       researchInterests: { type: [String], default: [] },
@@ -105,6 +130,7 @@ const UserSchema = new Schema<IUser>(
       skills: { type: [String], default: [] },
       software: { type: [String], default: [] },
       programmingLanguages: { type: [String], default: [] },
+      currentResearchProject: { type: String, default: '' },
     },
     externalProfiles: {
       linkedin: { type: String, default: '' },
@@ -112,6 +138,8 @@ const UserSchema = new Schema<IUser>(
       orcid: { type: String, default: '' },
       researchGate: { type: String, default: '' },
       googleScholar: { type: String, default: '' },
+      facebook: { type: String, default: '' },
+      pustFacultyProfile: { type: String, default: '' },
     },
     privacy: {
       showDateOfBirth: { type: Boolean, default: false },

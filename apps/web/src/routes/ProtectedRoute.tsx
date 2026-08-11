@@ -66,7 +66,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (requireActiveAccount && mongoUser.accountStatus === 'SUSPENDED') {
+  if (requireActiveAccount && mongoUser.accountStatus === 'REJECTED') {
     return (
       <Section>
         <PageContainer className="flex justify-center items-center py-12">
@@ -75,12 +75,40 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/50 text-semantic-danger mb-2">
                 <ShieldAlert size={36} />
               </div>
-              <Badge variant="danger">ACCOUNT SUSPENDED</Badge>
+              <Badge variant="danger">REGISTRATION NOT APPROVED</Badge>
+              <CardTitle className="text-xl font-bold mt-2">Registration Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
+              <p>
+                Your registration for the CMRL research portal was not approved at this time.
+              </p>
+              <div className="pt-4">
+                <Button variant="outline" size="sm" onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </PageContainer>
+      </Section>
+    );
+  }
+
+  if (requireActiveAccount && (mongoUser.accountStatus === 'SUSPENDED' || mongoUser.accountStatus === 'INACTIVE')) {
+    return (
+      <Section>
+        <PageContainer className="flex justify-center items-center py-12">
+          <Card className="max-w-lg w-full text-center p-6 border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+            <CardHeader className="items-center">
+              <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/50 text-semantic-danger mb-2">
+                <ShieldAlert size={36} />
+              </div>
+              <Badge variant="danger">ACCOUNT {mongoUser.accountStatus}</Badge>
               <CardTitle className="text-xl font-bold mt-2">Access Restricted</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
               <p>
-                Your CMRL research portal account has been suspended by an administrator.
+                Your CMRL research portal account status is currently <span className="font-semibold">{mongoUser.accountStatus}</span>. Please contact your laboratory supervisor or administrator.
               </p>
               <div className="pt-4">
                 <Button variant="outline" size="sm" onClick={logout}>
