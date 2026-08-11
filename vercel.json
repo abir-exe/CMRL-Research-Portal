@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "outputDirectory": null,
+  "buildCommand": "pnpm --filter api build",
+  "outputDirectory": "apps/api/dist",
   "rewrites": [
     {
       "source": "/(.*)",
