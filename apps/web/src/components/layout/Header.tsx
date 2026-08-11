@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Atom, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { firebaseUser, mongoUser } = useAuth();
   const location = useLocation();
 
   const navLinks = [
@@ -62,9 +64,17 @@ export function Header() {
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <Button variant="outline" size="sm" onClick={() => alert("Portal login will be available in Phase 3.")}>
-              Portal Login
-            </Button>
+            {firebaseUser ? (
+              <Button variant="default" size="sm">
+                <Link to="/profile">
+                  {mongoUser?.profile?.fullName || mongoUser?.userId || 'My Profile'}
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm">
+                <Link to="/login">Portal Login</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -105,9 +115,15 @@ export function Header() {
             </Link>
           ))}
           <div className="pt-2">
-            <Button variant="default" className="w-full" size="sm" onClick={() => alert("Portal login will be available in Phase 3.")}>
-              Portal Login
-            </Button>
+            {firebaseUser ? (
+              <Button variant="default" className="w-full" size="sm">
+                <Link to="/profile" onClick={() => setIsMenuOpen(false)}>My Profile</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" className="w-full" size="sm">
+                <Link to="/login" onClick={() => setIsMenuOpen(false)}>Portal Login</Link>
+              </Button>
+            )}
           </div>
         </div>
       )}
